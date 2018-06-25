@@ -1,22 +1,24 @@
 from environment import BaseEnvironment
 
 import gym
-from collections import deque
 import numpy as np
-import sys
 import pdb
-from pdb import set_trace as bp
 import random
-from io import StringIO
+import sys
+
+from collections import deque
+from gym import Env
 from gym import ObservationWrapper, Wrapper
-from gym.wrappers.time_limit import TimeLimit
-from gym import utils
+from gym import Space
 from gym import spaces
+from gym import utils
 from gym.envs.registration import register, registry, spec
 from gym.spaces import prng
-from gym import Env
-from gym import Space
 from gym.utils import seeding
+from gym.wrappers.time_limit import TimeLimit
+from io import StringIO
+from pdb import set_trace as bp
+
 
 MAPS = {
     "action_test": [
