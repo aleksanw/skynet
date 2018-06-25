@@ -7,10 +7,7 @@ import sys
 import pdb
 from pdb import set_trace as bp
 import random
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 from gym import ObservationWrapper, Wrapper
 from gym.wrappers.time_limit import TimeLimit
 from gym import utils
