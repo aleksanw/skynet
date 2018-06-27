@@ -71,10 +71,9 @@ class QNetwork(object):
                     # TD loss (Huber loss)
                     delta = self.clip_loss_delta
                     self.td_error = tf.subtract(self.target_ph, self.output_selected_action)
-                    self.td_loss = tf.reduce_mean(
-                                tf.where(tf.abs(self.td_error) < delta,
+                    self.td_loss = tf.where(tf.abs(self.td_error) < delta,
                                        tf.square(self.td_error) * 0.5,
-                                       delta * (tf.abs(self.td_error) - 0.5 * delta)))
+                                       delta * (tf.abs(self.td_error) - 0.5 * delta))
                     self.weighted_td_loss = tf.reduce_mean(self.importance_weights_ph * self.td_loss)
 
                     # if self.clip_loss_delta > 0:
