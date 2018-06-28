@@ -1,4 +1,7 @@
 import sys, os
+PACKAGE_PARENT = '../../'
+SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 import misc_utils
 import logger_utils
 import argparse
@@ -104,15 +107,15 @@ def get_arg_parser():
     parser.add_argument("--initial_random_steps", type=int, default=10000, help="Number of initial random steps")
     parser.add_argument('--n_steps', default=5, type=int, help="Number of steps to gain experience from before every update.", dest="n_steps")
     parser.add_argument('--arch', default='nba', help="Which network architecture to use: NBA, MLP, Deepmind's NIPS, Deepmind's NATURE", dest="arch")
-    parser.add_argument('--lstm_size', default=100, type=int, help="Size of LSTM",
+    parser.add_argument('--lstm_size', default=50, type=int, help="Size of LSTM",
                         dest="lstm_size")
     parser.add_argument('--dropout', default=0.5, type=float, help="Amount of dropout",
                         dest="dropout")
-    parser.add_argument('--mlp_hiddens', default='[150]', help="Hidden layers for MLP", dest="mlp_hiddens")
+    parser.add_argument('--mlp_hiddens', default='[50]', help="Hidden layers for MLP", dest="mlp_hiddens")
     boolean_flag(parser, "layer_norm", default=False, help="whether or not to use layer normalization")
     boolean_flag(parser, "double_q", default=True, help="Whether or not to use Double Q-learning")
     boolean_flag(parser, "continuous_target_update", default=True, help="Whether to update target network at fixed intervals or progressively")
-    parser.add_argument('--exp_eps_segments', default='[(0, 0.25),(510000, 0.25),(80000000, 0.05)], 0', type=str, help="Segments for the piecewise schedule of the greedy exploration's epsilon", dest="exp_eps_segments")
+    parser.add_argument('--exp_eps_segments', default='[(0, 1),(10000, 0.5),(15000,0)], 0', type=str, help="Segments for the piecewise schedule of the greedy exploration's epsilon", dest="exp_eps_segments")
     parser.add_argument('--single_life_episodes', default=False, type=bool_arg, help="If True, training episodes will be terminated when a life is lost (for games)", dest="single_life_episodes")
     parser.add_argument('--n_emulators_per_emulator_runner', default=4, type=int, help="Number of emulators to be run by each emulator runner process. Default is 4.", dest="n_emulators_per_emulator_runner")
     parser.add_argument('--n_emulator_runners', default=8, type=int, help="Number of emulator runner processes to launch. Default is 8.", dest="n_emulator_runners")

@@ -27,12 +27,13 @@ class QNetwork(object):
                 self.input_ph = tf.placeholder(shape=(None, conf.n_steps) + conf.state_shape, dtype=tf.float32, name='input')
                 input = Input(tensor=self.input_ph)
                 hidden = Masking(mask_value=MASK_VALUE)(input)
+                #hidden = Flatten()(input)
                 for nodes in conf.mlp_hiddens:
                     hidden = Dense(nodes)(hidden)
                     if conf.layer_norm:
                         # hidden = Lambda(lambda x: layer_norm(x))(hidden, center=True, scale=True)
                         hidden = Lambda(layer_norm, center=True, scale=True)(hidden)
-                        hidden = Activation('relu')(hidden)
+                    hidden = Activation('relu')(hidden)
 
                 hidden = LSTM(conf.lstm_size)(hidden)
                 self.output_layer_q = Dense(self.num_actions)(hidden)

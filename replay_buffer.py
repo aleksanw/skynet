@@ -70,7 +70,7 @@ class ReplayBuffer(object):
         self.actions = np.empty((self._size), dtype=np.int16)
         self.rewards = np.empty((self._size))
         self.dones = np.empty((self._size), dtype=np.bool)
-        self.traj_ids = np.empty((self._size), dtype=np.int8)
+        self.traj_ids = np.ones((self._size), dtype=np.int8) * -1
 
         # Arrays to hold sampled data
         self.batch_obses_t = np.empty((n_batch_trajectories, n_trajectory_steps,) + state_shape)
@@ -187,6 +187,9 @@ class ReplayBuffer(object):
             self.batch_rewards[k, n_masks:] = self.rewards[min_idx:max_idx]
             self.batch_dones[k, n_masks:] = self.dones[min_idx:max_idx]
             idxes.extend([i for i in range(min_idx, max_idx)])
+
+            #for i in range(min_idx, max_idx):
+            #    assert self.traj_ids[i] == self.traj_ids[min_idx]
 
         return (self.batch_obses_t, self.batch_actions, self.batch_rewards, self.batch_obses_tp1, self.batch_dones), np.array(idxes)
 
@@ -423,6 +426,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         traj_idxes = self._sample_proportional(self.n_batch_trajectories)
         batched_trajectories, idxes = self._retrieve_n_step_trajectories(traj_idxes)
+
+        #for i in idxes:
+        #    if i == -1: continue
+        #    assert self.traj_ids[i] > -1
+
         weights = self._compute_weights(idxes, beta)
         return batched_trajectories + (weights, idxes)
 
@@ -452,8 +460,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self._max_priority = max(self._max_priority, priority)
 
 if __name__ == '__main__':
-    replay_buffer = PrioritizedReplayBuffer(10, 0, alpha=0.6)
-    for i in range(5):
-        replay_buffer.add(i, i, i, i, i)
-    experience = replay_buffer.sample(2, beta=0.1)
+    n_steps = 6
+    n_emus = 5
+    replay_buffer = PrioritizedReplayBuffer(100, (1,), 0.6, 9, n_steps, n_emus=n_emus)
+    s = np.ones((1))
+    for _ in range(10000):
+        for e in range(n_emus):
+            for i in range(n_steps):
+                replay_buffer.add(s*i, i, i, s*i, np.random.randint(2), e)
+        experience = replay_buffer.sample_nstep(beta=0.1)
+    print("DONE")
     #print(experience)

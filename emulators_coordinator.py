@@ -28,6 +28,7 @@ class SimulatorsCoordinator(object):
         sim_vars = [{k: var[i * n_emulators_per_emulator_runner: (i + 1) * n_emulators_per_emulator_runner] for k, var in self.variables.items()} for i in range(emulator_runners)]
 
         self.simulators = [EmulatorRunner(i, environment_creator, n_emulators_per_emulator_runner, sim_vars[i], self.queues[i], self.barrier) for i in range(emulator_runners)]
+        print(len(self.simulators))
 
     def _get_shared(self, array):
         """

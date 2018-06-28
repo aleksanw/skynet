@@ -10,6 +10,7 @@ class EmulatorRunner(Process):
         self.initialization_complete = False
         self.emulators = [env_creator.create_environment(i)
                                  for i in range(n_emulators_per_emulator_runner)]
+        print("Emulators:", len(self.emulators))
 
     def run(self):
         super(EmulatorRunner, self).run()
