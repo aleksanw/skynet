@@ -58,6 +58,13 @@ MAPS = {
     "FHHH",
     "SHHH",
   ],
+   "5x6": [
+    "HHHHGH",
+    "HFFFFH",
+    "HFHHHH",
+    "HSHHHH",
+    "HHHHHH",
+  ],
   "9x9": [
     "HHHHHHHHG",
     "HHHHHHHHF",
@@ -80,16 +87,18 @@ MAPS = {
     "FHHHFHHHH",
     "SHHHHHHHH",
   ],
-  "9x9_maze_montezuma": [
-    "HHHHHHHHG",
-    "HHHHHAHHF",
-    "HHHFFFHHF",
-    "HHHFHHHHF",
-    "FFFFFFFFF",
-    "FHHHHHHHH",
-    "FFFFFHHHH",
-    "FHHHFHHHH",
-    "SHHHHHHHH",
+  "11x10_maze_montezuma": [
+    "HHHHHHHHHG",
+    "HHHHHHAHHF",
+    "HHHHFFFHHF",
+    "HHHHFHHHHF",
+    "HFFFFFFFFF",
+    "HFHHHHHHHH",
+    "HFHWWWWWWW",
+    "HFFFFFFFFF",
+    "HFHWFFFFFF",
+    "HSHWFFFFFF",
+    "HHHWFFFFFF",
   ],
   "1x4": [
     "SFFG",
@@ -98,6 +107,21 @@ MAPS = {
     "SFFG",
     "HHHH",
   ],
+  "2x5": [
+    "SFFFF",
+    "HWGWH",
+  ],
+  "2x11": [
+    "SFFFFFFFFFF",
+    "HWWWWGWWWWH",
+  ],   
+  "5x5_risk": [
+    "WSWWW",
+    "WFFFF",
+    "WFWWF",
+    "HAHWF",
+    "WFGFF",
+  ],  
 }
 
 
@@ -198,152 +222,221 @@ class ObsStack(Wrapper):
             return np.concatenate(list(self.obs), axis=1)
 
 
+class CorridorEnv(Env):
+    """
+      The surface is described using a grid like the following
 
-class CorridorEnv(MyDiscreteEnv):
-  """
-  The surface is described using a grid like the following
+        HHHG
+        FFFF
+        SWHH
+        AHHH
 
-    HHHD
-    FFFF
-    SHHH
-    AHHH
+      S : starting point, safe
+      F : frozen surface, safe
+      W : wall, safe (no state change)
+      H : hole, fall to your doom
+      A : adjacent goal
+      G : distant goal
 
-  S : starting point, safe
-  F : frozen surface, safe
-  H : hole, fall to your doom
-  A : adjacent goal
-  G : distant goal
+      Note that an implicit wall surrounding the whole 
+      grid surface is assumed. There is no need to explicitly
+      specify such wall and you should indeed not do it.
 
-  The episode ends when you reach the goal or fall in a hole.
-  
-  simple reward:
-  You receive a reward of 0.5 if you reach the adjacent goal, 
-  1 if you reach the distant goal, and zero otherwise.
-  
-  negative reward:
-  You receive a reward of 0.5 if you reach the adjacent goal, 
-  1 if you reach the distant goal, -1 if you fall in a hole 
-  and zero otherwise.
+      The episode ends when you reach the goal or fall in a hole.
 
-  steps reward:
-  You receive a reward of 0.5 if you reach the adjacent goal, 
-  1 if you reach the distant goal, 0.1 if you advance w/o falling
-  in a hole and zero otherwise.
+      Types of reward functions (can be combined; as a list):
 
-  negative_and_steps reward:
-  You receive a reward of 0.5 if you reach the adjacent goal, 
-  1 if you reach the distant goal, 0.1 if you advance w/o falling
-  in a hole, -1 if you fall in a hole and zero otherwise.
+      standard: (always active)
+      You receive a reward of 0.5 if you reach the adjacent goal, 
+      1 if you reach the distant goal, and zero otherwise.
 
-  """
-  metadata = {'render.modes': ['human', 'ansi']}
+      negative_hole reward:
+      -1 if you fall in a hole 
 
-  def __init__(self, desc=None, map_name="9x9", n_actions=5, random_start=True, reward = "simple", is_slippery=False):
-    if desc is None and map_name is None:
-      raise ValueError('Must provide either desc or map_name')
-    elif desc is None:
-      desc = MAPS[map_name]
-    self.desc = desc = np.asarray(desc, dtype='c')
-    self.nrow, self.ncol = nrow, ncol = desc.shape
+      positive_steps reward:
+      0.1 if you advance w/o falling in a hole or hitting a wall.
 
-    #self.action_space = spaces.Discrete(n_actions)
-    #self.observation_space = spaces.Discrete(desc.size)
-    #self.observation_space = DiscreteSpace(desc.size)
-    
-    self.adjacent_goal_done = False if np.array(desc==b'A').any() else True
+      negative_steps reward:
+      -0.1 for every elapsed time step
+
+    """
+    metadata = {'render.modes': ['human', 'ansi']}
+
+    def __init__(self, desc=None, map_name="9x9", n_actions=5, random_start=True, reward_type =["standard"], is_slippery=False):
+        """
+        - nS: number of states
+        - nA: number of actions
+        - P: transitions (*)
+        - isd: initial state distribution (**)
+        (*) dictionary dict of dicts of lists, where
+          P[s][a] == [(probability, nextstate, reward, done), ...]
+        (**) list or array of length nS
+        """
+        if desc is None and map_name is None:
+            raise ValueError('Must provide either desc or map_name')
+        elif desc is None:
+            desc = MAPS[map_name]
+        self.map_name = map_name
+        self.desc = desc = np.asarray(desc, dtype='c')
+        self.nrow, self.ncol = nrow, ncol = desc.shape
+
+        if type(reward_type) == str:
+            self.reward_type = [reward_type]
+        if not "standard" in reward_type:
+            self.reward_type.append("standard")
         
-    
-    n_state = nrow * ncol
+        n_states = nrow * ncol
+        
+        if random_start:
+            self.desc[(self.desc == b'S')]= b'F'
+            isd = np.array((self.desc == b'S') | (self.desc == b'F')).astype('float64').ravel()
+        else:
+            isd = np.array(self.desc == b'S').astype('float64').ravel()
+        isd /= isd.sum()
 
-    if random_start:
-        self.desc[(self.desc == b'S')]= b'F'
-        isd = np.array((self.desc == b'S') | (self.desc == b'F')).astype('float64').ravel()
-    else:
-        isd = np.array(self.desc == b'S').astype('float64').ravel()
-    isd /= isd.sum()
+        # Transition probabilities. A nested dictionary containing, for each state s and action a,
+        # a list of posible transitions. Each transition is defined by a tuple consisting of the
+        # probability of reaching the next-state when executing a, the next-state, the reward and an
+        # episode termination flag
+        P = {s : {a : [] for a in range(n_actions)} for s in range(n_states)}
 
-    P = {s : {a : [] for a in range(n_actions)} for s in range(n_state)}
+        def to_s(row, col):
+            return row*ncol + col
 
-    def to_s(row, col):
-        return row*ncol + col
-    def inc(row, col, a):
-        if a == 0: # left
-            col = max(col-1,0)
-        elif a == 1: # down
-            row = min(row+1, nrow-1)
-        elif a == 2: # right
-            col = min(col+1, ncol-1)
-        elif a == 3: # up
-            row = max(row-1, 0)
+        def inc(row, col, a):
+            _col = col
+            _row = row
+            if a == 0: # left
+                _col = max(col-1,0)
+            elif a == 1: # down
+                _row = min(row+1, nrow-1)
+            elif a == 2: # right
+                _col = min(col+1, ncol-1)
+            elif a == 3: # up
+                _row = max(row-1, 0)
 
-        return (row, col)
-    
-    def get_reward(newletter, row, col, newrow, newcol):
+            # Stay at current state if we hit a wall
+            if desc[_row, _col] == b'W':
+                _row = row
+                _col = col
+
+            return (_row, _col)
+
+
+        for row in range(nrow):
+            for col in range(ncol):
+                s = to_s(row, col)
+                letter = desc[row, col]
+                for a in range(n_actions):
+                    p_s_a = P[s][a]
+                    if letter in b'GH':
+                        p_s_a.append((1.0, s, 0, True))
+                    else:
+                                if is_slippery:
+                                    for b in [(a-1)%4, a, (a+1)%4]:
+                                        newrow, newcol = inc(row, col, b)
+                                        newstate = to_s(newrow, newcol)
+                                        newletter = desc[newrow, newcol]
+                                        done = bytes(newletter) in b'GH'
+                                        p_s_a.append((1.0/3.0, newstate, self.reward, done))
+                                else:
+                                    newrow, newcol = inc(row, col, a)
+                                    newstate = to_s(newrow, newcol)
+                                    newletter = desc[newrow, newcol]
+                                    done = bytes(newletter) in b'GH'
+                                    p_s_a.append((1.0, newstate, self.reward, done))
+
+        if np.array(desc==b'A').any():
+            self.exists_adjacent_goal = True
+            self.adjacent_goal_done = False 
+            self.nS = 2 * n_states
+        else:
+            self.exists_adjacent_goal = False
+            self.adjacent_goal_done = True 
+            self.nS = n_states
+        self.nA = n_actions
+        self.P = P
+        self.isd = isd
+        self.action_space = spaces.Discrete(self.nA)
+        self.observation_space = spaces.Discrete(self.nS)
+        self.lastaction=None # for rendering
+        
+        self.seed()
+        self.reset()
+
+    def reward(self, newletter, row, col, newrow, newcol):
+        rew = 0
         if newletter == b'A' and not self.adjacent_goal_done:
             self.desc[(self.desc == b'A')]= b'F' #Remove the adjacent goal
             self.adjacent_goal_done = True
-            return 0.5
+            rew = 0.5
         elif newletter == b'G' and self.adjacent_goal_done:
-            return 1.0
-        elif (newletter == b'H') and (reward in ['negative', 'negative_and_steps']):
-            return -1.0
-        elif (newrow != row or newcol != col) and newletter == b'F' and (reward in ['steps', 'negative_and_steps']):
-            return 0.1
-        else: 
-            return 0.0
+            rew = 1.0
+        elif (newletter == b'H') and 'negative_hole' in self.reward_type:
+            rew = -1.0
+        
+        if 'positive_steps' in self.reward_type and (newrow != row or newcol != col) and newletter in [b'F', b'A', b'G']:
+            rew += 0.1
+        
+        if 'negative_steps' in self.reward_type: 
+            rew -= 0.1
+            
+        return rew
 
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
-    for row in range(nrow):
-      for col in range(ncol):
-        s = to_s(row, col)
-        for a in range(n_actions):
-          li = P[s][a]
-          letter = desc[row, col]
-          if letter in b'GH':
-            li.append((1.0, s, 0, True))
-          else:
-                        if is_slippery:
-                            for b in [(a-1)%4, a, (a+1)%4]:
-                                newrow, newcol = inc(row, col, b)
-                                newstate = to_s(newrow, newcol)
-                                newletter = desc[newrow, newcol]
-                                done = bytes(newletter) in b'GH'
-                                rew = get_reward(newletter, row, col, newrow, newcol)
-                                li.append((1.0/3.0, newstate, rew, done))
-                        else:
-                            newrow, newcol = inc(row, col, a)
-                            newstate = to_s(newrow, newcol)
-                            newletter = desc[newrow, newcol]
-                            done = bytes(newletter) in b'GH'
-                            rew = get_reward(newletter, row, col, newrow, newcol)
-                            li.append((1.0, newstate, rew, done))
-          #li.append((1.0/3.0, newstate, rew, done))
+    def step(self, a):
+        transitions = self.P[self.s][a]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, new_s, r, d = transitions[i]
+        
+        row, col = self.coordinates(self.s)
+        new_row, new_col = self.coordinates(new_s)
+        new_letter = self.desc[new_row, new_col]
+        _r = r(new_letter, row, col, new_row, new_col)
+        
+        self.s = new_s
+        self.lastaction = a
+        new_s = new_s + self.exists_adjacent_goal * self.nS / 2
+        return (new_s, _r, d, {"prob" : p})
+    
+    def coordinates(self, s):
+        row = s // self.ncol
+        col = s % self.ncol
+        return (row, col)
+    
+    def reset(self):
+        self.s = categorical_sample(self.isd, self.np_random)
+        self.start_s = self.s
+        self.lastaction = None
+        return self.s + self.exists_adjacent_goal * self.nS / 2
+        
+    def render(self, mode='human', close=False):
+        if close:
+            return
+        outfile = StringIO.StringIO() if mode == 'ansi' else sys.stdout
 
-    super(CorridorEnv, self).__init__(n_state, n_actions, P, isd)
+        row_start, col_start = self.start_s // self.ncol, self.start_s % self.ncol
+        row, col = self.s // self.ncol, self.s % self.ncol
+        desc = self.desc.tolist()
+        desc = [[c.decode('utf-8') for c in line] for line in desc]
+        desc[row_start][col_start] = 'S'
+        desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
 
-  def _render(self, mode='human', close=False):
-    if close:
-      return
-    outfile = StringIO.StringIO() if mode == 'ansi' else sys.stdout
+        if self.lastaction is not None:
+            outfile.write("  ({})\n".format(self.get_action_meanings()[self.lastaction]))
+        else:
+            outfile.write("\n")
 
-    row_start, col_start = self.start_s // self.ncol, self.start_s % self.ncol
-    row, col = self.s // self.ncol, self.s % self.ncol
-    desc = self.desc.tolist()
-    desc = [[c.decode('utf-8') for c in line] for line in desc]
-    desc[row_start][col_start] = 'S'
-    desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
+        outfile.write("\n".join("".join(row) for row in desc) + "\n")
 
-    if self.lastaction is not None:
-      outfile.write("  ({})\n".format(self.get_action_meanings()[self.lastaction]))
-    else:
-      outfile.write("\n")
+        return outfile
 
-    outfile.write("\n".join("".join(row) for row in desc) + "\n")
+    def get_action_meanings(self):
+        return [["Left", "Down", "Right", "Up"][i] if i < 4 else "NoOp" for i in range(self.action_space.n)]
 
-    return outfile
-
-  def get_action_meanings(self):
-    return [["Left", "Down", "Right", "Up"][i] if i < 4 else "NoOp" for i in range(self.action_space.n)]
 
 class ComplexActionSetCorridorEnv(MyDiscreteEnv):
   """
@@ -528,7 +621,6 @@ register(
     'map_name': '4x4_fl',
     'n_actions': 4,
     'random_start': False,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -541,7 +633,6 @@ register(
     'map_name': '8x8_fl',
     'n_actions': 4,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -555,7 +646,6 @@ register(
     'map_name': '4x4',
     'n_actions': 4,
     'random_start': False,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -567,7 +657,6 @@ register(
   kwargs={
     'map_name': '4x4',
     'n_actions': 4,
-    'reward': 'simple',
     'random_start': True,
     'is_slippery': False
   },
@@ -591,7 +680,6 @@ register(
     'map_name': '9x9',
     'n_actions': 4,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -624,7 +712,6 @@ register(
     'map_name': '9x9_maze',
     'n_actions': 4,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -637,7 +724,6 @@ register(
     'map_name': '9x9_maze',
     'n_actions': 4,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': True
   },
   max_episode_steps=100,
@@ -650,7 +736,6 @@ register(
     'map_name': '9x9_maze_montezuma',
     'n_actions': 4,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -663,7 +748,6 @@ register(
     'map_name': 'action_test',
     'n_actions': 4,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
@@ -676,7 +760,6 @@ register(
     'map_name': 'action_test',
     'n_actions': 8,
     'random_start': True,
-    'reward': 'simple',
     'is_slippery': False
   },
   max_episode_steps=100,
