@@ -1,3 +1,10 @@
+# Print logs in color.
+import coloredlogs
+coloredlogs.install(
+        level='DEBUG',
+        fmt='%(asctime)s %(name)s %(levelname)s %(message)s',
+        )
+
 import sys, os
 PACKAGE_PARENT = '../../'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
