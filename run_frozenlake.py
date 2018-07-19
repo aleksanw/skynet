@@ -1,5 +1,7 @@
 from argparse import Namespace
 
+import logging
+log = logging.getLogger(__name__)
 
 def namespace_based_on(base_namespace, **kwargs):
     return Namespace(**{**vars(base_namespace), **vars(Namespace(**kwargs))})
@@ -32,7 +34,7 @@ default_args = Namespace(
     mlp_hiddens=[50],
     n_emulator_runners=8,
     n_emulators_per_emulator_runner=4,
-    n_steps=5,
+    n_steps=5,  # length of trajectories to be samples from replay buffer while n-step sampling.
     optimizer='adam',
     prioritized=True,
     prioritized_alpha=0.4,
@@ -54,10 +56,17 @@ default_args = Namespace(
 custom_args = namespace_based_on(default_args,
     e=0,
     alpha=0.01,
+    visualize=2,
 )
 
 
 def main():
+    #import warnings
+    #warnings.simplefilter('error')
+    # Tensorflow makes use of deprecated module imp. Squelch that warning.
+    #warnings.filterwarnings('ignore', '.*imp module.*',)
+    logging.basicConfig(level=logging.INFO)
+    log.info(f"Running skynet.train.main with args {custom_args}")
     import skynet.train
     skynet.train.main(custom_args)
 
