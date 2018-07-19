@@ -87,7 +87,7 @@ def setup_kill_signal_handler(learner):
 
 def get_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-g', default='CorridorFLNonSkid-v1', help='Name of game', dest='game')
+    parser.add_argument('-g', default='FrozenLake-v0', help='Name of game', dest='game')
     parser.add_argument('--experiment_type', default='corridor', type=str, help="Class of environments to experiment with, e.g. atari, corridor, gym, etc.", dest="experiment_type")
     parser.add_argument('-d', '--device', default='cpu', type=str, help="Indicatator for whether or not the agent is trained on a gpu (Options: 'cpu', 'gpu')", dest="device")
     parser.add_argument('--rom_path', default='./atari_roms', help='Directory where the game roms are located (needed for ALE environment)', dest="rom_path")
@@ -112,10 +112,10 @@ def get_arg_parser():
     boolean_flag(parser, "layer_norm", default=False, help="whether or not to use layer normalization")
     boolean_flag(parser, "double_q", default=True, help="Whether or not to use Double Q-learning")
     boolean_flag(parser, "continuous_target_update", default=True, help="Whether to update target network at fixed intervals or progressively")
-    parser.add_argument('--exp_eps_segments', default='[(0, 1),(10000, 0.5),(15000,0)], 0', type=str, help="Segments for the piecewise schedule of the greedy exploration's epsilon", dest="exp_eps_segments")
+    parser.add_argument('--exp_eps_segments', default='[(0, 1),(100000, 0.5),(150000,0)], 0', type=str, help="Segments for the piecewise schedule of the greedy exploration's epsilon", dest="exp_eps_segments")
     parser.add_argument('--single_life_episodes', default=False, type=bool_arg, help="If True, training episodes will be terminated when a life is lost (for games)", dest="single_life_episodes")
-    parser.add_argument('--n_emulators_per_emulator_runner', default=4, type=int, help="Number of emulators to be run by each emulator runner process. Default is 4.", dest="n_emulators_per_emulator_runner")
-    parser.add_argument('--n_emulator_runners', default=8, type=int, help="Number of emulator runner processes to launch. Default is 8.", dest="n_emulator_runners")
+    parser.add_argument('--n_emulators_per_emulator_runner', default=1, type=int, help="Number of emulators to be run by each emulator runner process. Default is 4.", dest="n_emulators_per_emulator_runner")
+    parser.add_argument('--n_emulator_runners', default=1, type=int, help="Number of emulator runner processes to launch. Default is 8.", dest="n_emulator_runners")
     parser.add_argument('-df', '--debugging_folder', default='logs/', type=str, help="Folder where to save the debugging information.", dest="debugging_folder")
     parser.add_argument('-rs', '--random_start', default=True, type=bool_arg, help="Whether or not to start with 30 noops for each env. Default True", dest="random_start")
     parser.add_argument('--clip_loss', default=1.0, type=float, help="Delta for Huber loss. Default = 1.0", dest="clip_loss_delta")
