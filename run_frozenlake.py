@@ -20,7 +20,6 @@ default_args = Namespace(
     double_q=True,
     dropout=0.5,
     e=0.1,
-    evaluate=False,
     exp_eps_segments='[(0, 1),(10000, 0.5),(15000,0)], 0',
     experiment_type='corridor',
     game='FrozenLake-v0',

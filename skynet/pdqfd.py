@@ -7,20 +7,16 @@ from collections import deque
 import logging
 logger = logging.getLogger()
 
+
 class PDQFDLearner(ActorLearner):
     def __init__(self, network_creator, environment_creator, args, sim_coordinator):
         super(PDQFDLearner, self).__init__(network_creator, environment_creator, args)
         self.sim_coordinator = sim_coordinator
-        self.evaluate = args.evaluate
         self.eva_env = None
         self.game = args.game
         self.double_q = args.double_q
         self.continuous_target_update = args.continuous_target_update
         self.stochastic = args.stochastic
-        #self.exp_epsilon = LinearSchedule(args.max_global_steps,
-        #                           initial_p=args.exp_epsilon,
-        #                           final_p=0.0)
-        #self.exp_epsilon = PiecewiseSchedule([(0, args.exp_epsilon), (round(args.max_global_steps/3), 0.3), (round(2*args.max_global_steps/3), 0.01)], outside_value=0.001)
         self.exp_epsilon = PiecewiseSchedule(eval(args.exp_eps_segments)[0], outside_value=eval(args.exp_eps_segments)[1])
         self.initial_random_steps = args.initial_random_steps
         self.n_emulators = self.n_emulator_runners * self.n_emulators_per_emulator_runner
@@ -50,7 +46,6 @@ class PDQFDLearner(ActorLearner):
 
         self.summaries_op = tf.summary.merge_all()
         self.counter = 0
-
 
     # The input is a tuple where each element is an array of shape (n_trajectories, n_steps) + s_shape
     # The output array has shape (n_steps * n_trajectories, n_steps) + s_shape. That is, for each trajectory,
@@ -111,7 +106,6 @@ class PDQFDLearner(ActorLearner):
     def __get_target_maxq_values(self, next_states):
         return PDQFDLearner.get_target_maxq_values(self.target_network, next_states, self.session, double_q=self.double_q, learning_network=self.network)
 
-
     def update_target(self):
         if self.continuous_target_update:
             self.session.run(self.target_network.continuous_sync_nets)
@@ -130,7 +124,6 @@ class PDQFDLearner(ActorLearner):
             estimated_return = rewards[:, t] + self.gamma * estimated_return * done_masks[:, t]
             y[:, t] = estimated_return
         return y
-
 
     def train_from_experience(self):
         if self.prioritized:
@@ -168,7 +161,7 @@ class PDQFDLearner(ActorLearner):
     def collect_experience(self):
         var = self.shared_variables
         for t in range(self.n_steps):
-            ## Add current state to state buffer (we keep track of the last n_steps visited states to select actions)
+            # Add current state to state buffer (we keep track of the last n_steps visited states to select actions)
             self.states_buffer.append(np.reshape(var["s"], (self.n_emulators, 1) + self.state_shape).copy())
 
             # Select next action based on sequence of states in buffer and pass on to simulators via shared_variables
@@ -182,7 +175,6 @@ class PDQFDLearner(ActorLearner):
             r = self.rescale_reward(var["r"], type="none")
 
             # Statistics
-            #self.rewards_per_step.append(var['r'].copy())
             self.acc_reward += var['r']
             self.acc_steps += self.one_step
 
@@ -196,9 +188,6 @@ class PDQFDLearner(ActorLearner):
                     if self.states_buffer[i][emu, 0, 0] == MASK_VALUE:
                         continue
                     self.states_buffer[i][emu, :, :] = MASK_VALUE
-
-                # Statistics
-                #self.n_episodes += 1
 
                 self.n_dones += 1
                 self.rewards_per_episode.append(self.acc_reward[emu])
@@ -214,21 +203,14 @@ class PDQFDLearner(ActorLearner):
                     self.global_step))
                 return
 
-            #total_reward = np.sum(np.concatenate(self.rewards_per_step))
-            #self.rewards_per_step = []
-
             n_episodes = max(self.n_emulators, self.n_emulators + self.n_dones)
-            #n_episodes = self.n_episodes
 
-            #avg_reward_per_episode = total_reward / n_episodes
             avg_reward_per_episode = np.mean(self.rewards_per_episode)
             self.rewards_per_episode = []
 
-            #avg_episode_length = self.global_step / n_episodes
             avg_episode_length = np.mean(self.episode_length)
             self.episode_length = []
 
-            #self.n_episodes = self.n_emulators
             self.n_dones = 0
             
             logger.debug("{} global steps, " 
@@ -249,27 +231,6 @@ class PDQFDLearner(ActorLearner):
                             simple_value=avg_episode_length),
                     ])
             self.summary_writer.add_summary(stats_summary, self.global_step)
-            self.summary_writer.flush()
-
-
-
-
-    # TODO: to be fixed
-    def evaluate_agent(self, msg):
-        if self.evaluate:
-            assert False, "Evaluate function needs to be fixed"
-            if self.eva_env == None:
-                self.eva_env = self.environment_creator.create_environment(-1)
-            _succ_epi = evaluate(self.eva_env, self.session, self.network.output_layer_q, self.network.input_ph,
-                             self.n_steps, self.state_shape,
-                             visualize=False, v_func=self.network.value)
-            logger.debug(
-                "{}: {:.2f}%".format(msg, _succ_epi))
-            perf_summary = tf.Summary(value=[
-                tf.Summary.Value(
-                    tag="Performance",
-                    simple_value=_succ_epi)])
-            self.summary_writer.add_summary(perf_summary, self.global_step)
             self.summary_writer.flush()
 
     def train(self):
@@ -310,12 +271,8 @@ class PDQFDLearner(ActorLearner):
 
                 self.save_vars()
 
-        self.evaluate_agent("End - Average reward over 100 episodes")
-
         self.cleanup()
 
     def cleanup(self):
         super(PDQFDLearner, self).cleanup()
         if self.n_emulators_per_emulator_runner > 0: self.sim_coordinator.stop()
-
-
