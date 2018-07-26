@@ -52,10 +52,16 @@ default_args = Namespace(
 )
 
 
-custom_args = namespace_based_on(default_args,
-    e=0,
-    alpha=0.01,
-    visualize=2,
+custom_args = namespace_based_on(
+    default_args,
+    exp_eps_segments='[(0, 1),(10000, 0.5),(100000,0)], 0',
+    initial_random_steps=10000,
+    n_emulator_runners=1,
+    n_emulators_per_emulator_runner=2,
+    batch_size=32,
+    max_global_steps=300000,  # Empirically, seems to be enough
+    target_update_freq=2000,
+    target_update_tau=0.05,
 )
 
 

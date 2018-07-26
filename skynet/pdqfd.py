@@ -1,3 +1,5 @@
+import pandas as pd
+
 from actor_learner import *
 
 from schedules import LinearSchedule, PiecewiseSchedule
@@ -49,7 +51,10 @@ class PDQFDLearner(ActorLearner):
 
         self.last_target_network_update = 0
 
-    # The input is a tuple where each element is an array of shape (n_trajectories, n_steps) + s_shape
+        # Keep tuples of (global_sum_step, avg. reward since last, avg. episode len since last)
+        self.progress_log = []
+
+        # The input is a tuple where each element is an array of shape (n_trajectories, n_steps) + s_shape
     # The output array has shape (n_steps * n_trajectories, n_steps) + s_shape. That is, for each trajectory,
     # each time step t in the input array is transformed into a sequence of 0 to t steps from the input array
     # and t to n masked steps.
@@ -215,7 +220,10 @@ class PDQFDLearner(ActorLearner):
             self.episode_length = []
 
             self.n_dones = 0
-            
+
+            # Log for graphing
+            self.progress_log.append((self.global_step, avg_reward_per_episode, avg_episode_length))
+
             logger.debug("{} global steps, " 
                         "Avg. reward/episode: {:.2f}, "
                         "Avg. episode length: {:.2f}, "
@@ -240,6 +248,7 @@ class PDQFDLearner(ActorLearner):
         """
         Main actor learner loop for parallel deep Q learning with demonstrations.
         """
+
         print("STARTING TRAINING")
         # Initialize networks
         self.global_step = self.init_network()
@@ -267,6 +276,14 @@ class PDQFDLearner(ActorLearner):
         while self.global_step < self.max_global_steps:
             self.collect_experience()
 
+            #progress_training_count.append(self.global_step)
+            #progress_avg_reward.append(self.acc_reward / self.acc_steps)
+            #progress_log = pd.DataFrame({
+            #    'training_count': progress_training_count,
+            #    'avg_reward': progress_avg_reward,
+            #})
+            #progress_log.to_csv(progress_log_path)
+
             if self.global_step > self.initial_random_steps:
                 self.train_from_experience()
 
@@ -275,6 +292,11 @@ class PDQFDLearner(ActorLearner):
                 self.save_vars()
 
         self.cleanup()
+
+        # Save progress log to csv
+        progress_log_path = 'progress_log.csv'
+        progress_log = pd.DataFrame(self.progress_log, columns=['env_step_count', 'avg_reward', 'avg_ep_len'])
+        progress_log.to_csv(progress_log_path, index=False)
 
     def cleanup(self):
         super(PDQFDLearner, self).cleanup()

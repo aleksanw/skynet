@@ -136,7 +136,6 @@ def get_arg_parser():
 
     parser.add_argument('--resume', help='Whether to resume training using the args.json configuration file inside debugging_folder',
                         action='store_true')
-    boolean_flag(parser, "evaluate", default=False, help="If True, evaluate performace at selected points in time")
 
     return parser
 
