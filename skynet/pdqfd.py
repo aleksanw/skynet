@@ -47,6 +47,8 @@ class PDQFDLearner(ActorLearner):
         self.summaries_op = tf.summary.merge_all()
         self.counter = 0
 
+        self.last_target_network_update = 0
+
     # The input is a tuple where each element is an array of shape (n_trajectories, n_steps) + s_shape
     # The output array has shape (n_steps * n_trajectories, n_steps) + s_shape. That is, for each trajectory,
     # each time step t in the input array is transformed into a sequence of 0 to t steps from the input array
@@ -109,7 +111,8 @@ class PDQFDLearner(ActorLearner):
     def update_target(self):
         if self.continuous_target_update:
             self.session.run(self.target_network.continuous_sync_nets)
-        elif self.global_step % self.target_update_freq == 0:
+        elif self.global_step - self.last_target_network_update > self.target_update_freq:
+            self.last_target_network_update = self.global_step
             params = self.network.get_params(self.session)
             feed_dict = {}
             for i in range(len(self.target_network.params)):
