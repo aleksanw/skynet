@@ -3,6 +3,7 @@ import misc_utils
 import logger_utils
 import argparse
 import signal
+import shutil
 from pdqfd import PDQFDLearner
 from q_network import QNetwork
 import environment_creator
@@ -31,6 +32,9 @@ def main(args):
         assert os.path.exists(conf_file), "Could not find an args.json file in the debugging folder"
         for k, v in logger_utils.load_args(args.debugging_folder).items():
             setattr(args, k, v)
+    else:
+        logger.debug("Not resuming, overwriting state directory.")
+        shutil.rmtree(args.debugging_folder)
 
     logger.debug('Configuration: {}'.format(args))
     logger_utils.save_args(args, args.debugging_folder)
