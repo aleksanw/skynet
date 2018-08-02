@@ -1,4 +1,6 @@
 import pandas as pd
+import pathlib
+import datetime
 
 from actor_learner import *
 
@@ -294,8 +296,10 @@ class PDQFDLearner(ActorLearner):
         self.cleanup()
 
         # Save progress log to csv
-        progress_log_path = 'progress_log.csv'
         progress_log = pd.DataFrame(self.progress_log, columns=['env_step_count', 'avg_reward', 'avg_ep_len'])
+        progress_log_dir_path = 'progress_logs/'
+        progress_log_path = progress_log_dir_path + str(datetime.datetime.now()) + '.csv'
+        pathlib.Path(progress_log_dir_path).mkdir(exist_ok=True)
         progress_log.to_csv(progress_log_path, index=False)
 
     def cleanup(self):
