@@ -150,6 +150,8 @@ class ReplayBuffer(object):
         return (np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones))
 
     def _retrieve_n_step_trajectories(self, traj_idxes):
+        # Hack: shift traj_idxes a bit
+        traj_idxes += 5
         idxes = []
         for k, idx in enumerate(traj_idxes):
             # Randomly choose n_steps samples around current idx
