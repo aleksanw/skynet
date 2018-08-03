@@ -73,7 +73,8 @@ def main():
     logging.basicConfig(level=logging.INFO)
     log.info(f"Running skynet.train.main with args {custom_args}")
     import skynet.train
-    skynet.train.main(custom_args)
+    for _ in range(100):
+        skynet.train.main(custom_args)
 
 
 if __name__ ==  '__main__':

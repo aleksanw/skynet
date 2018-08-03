@@ -25,3 +25,6 @@ termcolor==1.1.0
 urllib3==1.23
 Werkzeug==0.14.1
 scipy
+pandas
+matplotlib
+seaborn
