@@ -8,7 +8,7 @@ future==0.16.0
 gast==0.2.0
 grpcio==1.12.1
 gym==0.10.5
-html5lib==0.9999999
+html5lib==0.999999999
 humanfriendly==4.12.1
 idna==2.7
 Markdown==2.6.11
